@@ -1,0 +1,199 @@
+<!doctype html>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Ping pong</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        * {margin : 0;padding : 0}
+    </style>
+</head>
+<body>
+<div>
+    <canvas id="canvas"></canvas>
+    <!-- sound source : https://freesound.org/people/JarredGibb/sounds/217460/ -->
+    <audio src="./ping.wav" id="pingsound"></audio>
+</div>
+<div id="framerate"></div>
+<script>
+    /*
+    https://www.udemy.com/code-your-first-game/learn/v4/content
+    */
+    window.addEventListener('load', function() {
+        var ping = document.getElementById('pingsound');
+        var PI2 = Math.PI * 2;
+
+        var canvas = document.getElementById('canvas');
+        var ctx = canvas.getContext('2d');
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        animate(30, 0, draw);
+        
+        var ballX = canvas.width / 2;
+        var ballY = canvas.height / 2;
+
+        var ballSpeedX = 10;
+        var ballSpeedY = 3
+
+        var canvasTop = canvas.getBoundingClientRect().top;
+        var playerPaddleY = canvas.height / 2 - 50;
+        var autoPaddleY = playerPaddleY;
+        var autoPaddleSpeedY = 3;
+        var autoPaddleDirection = 1;
+
+        var playerScore = 0;
+        var autoScore = 0;
+
+        canvas.addEventListener('mousemove', function(evt) {
+            var mouseClientY = evt.clientY;
+            var mouseY = mouseClientY - canvasTop;
+
+            playerPaddleY = mouseY - 50;
+        });
+
+        function draw() {
+            ctx.fillStyle = 'black';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            drawScore();
+            drawMiddle();
+            drawBall();
+            drawPaddle(0, playerPaddleY);
+
+            if (ballY > autoPaddleY + 50) {
+                autoPaddleDirection = 1;
+            } else {
+                autoPaddleDirection = -1;
+            }
+            autoPaddleY += (autoPaddleSpeedY * autoPaddleDirection);
+            drawPaddle(canvas.width - 20, autoPaddleY);
+
+            printFrame();
+        }       
+
+        function drawBall() {
+            if ((ballSpeedX < 0 && ballX - 40 < 0 && ballY >= playerPaddleY && ballY <= playerPaddleY + 100) 
+            || (ballSpeedX > 0 && ballX + 40 > canvas.width && ballY >= autoPaddleY && ballY <= autoPaddleY + 100)) {
+                ping.play();
+                ballSpeedX = -ballSpeedX;
+            } else if (ballX >= canvas.width) {
+                playerScore++;
+                resetBall();
+            } else if (ballX <= 0) {
+                autoScore++;
+                resetBall();
+            }
+
+            if (ballY >= canvas.height || ballY <= 0) {
+                ballSpeedY = -ballSpeedY;
+            }
+
+            ctx.fillStyle = 'yellow';
+            ctx.beginPath();
+            ctx.arc(ballX, ballY, 20, 0, PI2, true);
+            ctx.fill();
+            ctx.closePath();
+
+            ballX += ballSpeedX;
+            ballY += ballSpeedY;
+        }
+
+        function drawPaddle(x, y) {
+            var paddleY = y;
+
+            if (paddleY + 100 >= canvas.height) {
+                paddleY = canvas.height - 100;
+            } else if (paddleY < 0) { 
+                paddleY = 0;
+            }
+            ctx.fillStyle = 'white';
+            ctx.fillRect(x, paddleY, 20, 100);
+        }
+
+        function drawMiddle() {
+            var x = canvas.width / 2 - 1;
+            for(var i = 0; i < canvas.height; i += 40) {
+                ctx.fillStyle = 'white';
+                ctx.fillRect(x, i, 2, 20);
+            }
+        }
+
+        function drawScore() {
+            ctx.font = '300px Arial';
+            ctx.fillStyle = chooseColor(playerScore, autoScore);
+            ctx.textAlign = 'right';
+            ctx.fillText(playerScore, canvas.width / 2, canvas.height / 2 + 75);
+            ctx.fillStyle = chooseColor(autoScore, playerScore);
+            ctx.textAlign = 'left';
+            ctx.fillText(autoScore, canvas.width / 2, canvas.height / 2 + 75);
+        }
+
+        function chooseColor(score1, score2) {
+            if (score1 == score2) {
+                return 'white';
+            } else if (score1 > score2) {
+                return 'green';
+            } else {
+                return 'red';
+            }
+        }
+
+        function resetBall() {
+            ballX = canvas.width / 2;
+            ballY = canvas.height / 2;
+
+            ballSpeedX = -ballSpeedX;
+            ballSpeedY = -ballSpeedY;
+        }
+
+        var frameCount = 0;
+        var refreshCount = 0;
+        var startTime = new Date().getTime();
+
+        var frameAcc = 0;
+        var refreshAcc = 0;
+
+        function printFrame() {
+            ctx.fillStylee = 'white';
+            ctx.font = '12px Arial';
+            ctx.fillText('frame rate : ' + refreshCount, 10, 10);
+            ctx.fillText('refresh rate : ' + frameCount, 10, 20);
+        }
+        
+        function animate(fps, before, draw) {
+            var nextTime = new Date().getTime();
+
+            if (nextTime - startTime >= 1000) {
+                startTime = nextTime;
+                frameCount = frameAcc;
+                refreshCount = refreshAcc;
+
+                frameAcc = 0;
+                refreshAcc = 0;
+            } else {
+                frameAcc++;
+            }
+
+            var interval = 1000 / fps;
+            var now = new Date().getTime();
+
+            var gap = now - before;
+            if (gap > interval) {
+                refreshAcc++;
+
+                draw();
+                before = new Date().getTime() - (gap % interval);
+            }
+
+            requestAnimationFrame(function() {
+                animate(fps, before, draw);
+            })
+        }
+    });
+</script>
+</body>
+</html>
